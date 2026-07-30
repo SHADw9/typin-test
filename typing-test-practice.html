@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Touch Typing Master & WPM Speed Test</title>
+  <style>
+    :root {
+      --bg: #1e1e2e;
+      --card: #252538;
+      --text: #cdd6f4;
+      --correct: #a6e3a1;
+      --wrong: #f38ba8;
+      --accent: #89b4fa;
+      --muted: #6c7086;
+      --key-bg: #313244;
+      --active-key: #f9e2af;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 1rem;
+    }
+
+    .container {
+      background: var(--card);
+      padding: 2rem;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 850px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      cursor: pointer;
+      position: relative;
+    }
+
+    .stats-bar {
+      display: flex;
+      justify-content: space-around;
+      margin-bottom: 1.2rem;
+      padding: 1rem;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 8px;
+    }
+
+    .stat-box { text-align: center; }
+    .stat-val { font-size: 2rem; font-weight: bold; color: var(--accent); }
+    .stat-lbl { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+
+    .text-display {
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 1.3rem;
+      line-height: 1.6;
+      height: 130px;
+      overflow-y: auto;
+      margin-bottom: 1rem;
+      padding: 1rem;
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 8px;
+      word-break: break-all;
+      user-select: none;
+    }
+
+    .char { color: var(--muted); border-bottom: 2px solid transparent; transition: color 0.1s ease; }
+    .char.correct { color: var(--correct); }
+    .char.wrong { color: var(--wrong); background: rgba(243, 139, 168, 0.2); border-radius: 2px; }
+    .char.current { border-bottom-color: var(--accent); color: var(--text); }
+
+    /* Visual Finger Guide Box */
+    .finger-guide {
+      text-align: center;
+      margin-bottom: 1rem;
+      padding: 0.75rem;
+      background: #181825;
+      border-radius: 6px;
+      font-weight: bold;
+      color: var(--active-key);
+      font-size: 1rem;
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #313244;
+    }
+
+    /* On-Screen Keyboard */
+    .keyboard {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 1.5rem;
+      background: #181825;
+      padding: 14px;
+      border-radius: 8px;
+    }
+
+    .row { display: flex; justify-content: center; gap: 6px; }
+
+    .key {
+      background: var(--key-bg);
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-weight: bold;
+      font-size: 0.95rem;
+      min-width: 38px;
+      text-align: center;
+      transition: all 0.15s ease;
+    }
+
+    .key.space { min-width: 220px; }
+    .key.active {
+      background: var(--active-key);
+      color: #11111b;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(249, 226, 175, 0.5);
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    select, button {
+      background: #313244;
+      color: var(--text);
+      border: 1px solid #45475a;
+      padding: 0.7rem 1rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      outline: none;
+    }
+
+    select:hover, button:hover { background: #45475a; }
+    button.primary { background: var(--accent); color: #11111b; font-weight: bold; border: none; }
+
+    /* Results Modal Card Overlay */
+    .modal {
+      display: none;
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(30, 30, 46, 0.95);
+      border-radius: 12px;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 1.5rem;
+      z-index: 10;
+    }
+
+    .modal.active { display: flex; }
+    .modal h2 { color: var(--accent); font-size: 2rem; }
+
+    .results-grid {
+      display: flex;
+      gap: 2rem;
+      background: #252538;
+      padding: 1.5rem 2.5rem;
+      border-radius: 10px;
+      border: 1px solid #45475a;
+    }
+
+    .res-box { text-align: center; }
+    .res-val { font-size: 2.2rem; font-weight: bold; color: var(--correct); }
+    .res-lbl { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; }
+
+    #input-field { opacity: 0; position: absolute; pointer-events: none; }
+  </style>
+</head>
+<body>
+
+<div class="container" onclick="document.getElementById('input-field').focus()">
+
+  <div class="stats-bar">
+    <div class="stat-box"><div class="stat-val" id="wpm">0</div><div class="stat-lbl">Speed (WPM)</div></div>
+    <div class="stat-box"><div class="stat-val" id="accuracy">100%</div><div class="stat-lbl">Accuracy</div></div>
+    <div class="stat-box"><div class="stat-val" id="timer">60s</div><div class="stat-lbl">Time Left</div></div>
+  </div>
+
+  <div class="text-display" id="quote-display"></div>
+
+  <!-- Active Finger Prompt -->
+  <div class="finger-guide" id="finger-guide">Press any key to start the test</div>
+
+  <!-- On-Screen Keyboard -->
+  <div class="keyboard">
+    <div class="row" id="row1"></div>
+    <div class="row" id="row2"></div>
+    <div class="row" id="row3"></div>
+    <div class="row" id="row4"></div>
+  </div>
+
+  <input type="text" id="input-field" autofocus autocomplete="off">
+
+  <div class="controls-grid">
+    <select id="group-select" onchange="resetGame()">
+      <optgroup label="Typing Speed Tests">
+        <option value="test_mixed" selected>⚡ Speed Test: Standard Paragraphs</option>
+        <option value="test_hard">⚡ Speed Test: Complex Words & Punctuation</option>
+      </optgroup>
+      <optgroup label="Beginner Muscle Practice">
+        <option value="home_keys">1. Home Row Keys (ASDF JKL;)</option>
+        <option value="home_words">2. Home Row Words (fall, glad, ask)</option>
+        <option value="top_keys">3. Top Keys (QWERTY UIOP)</option>
+        <option value="top_words">4. Top + Home Words (quick, report)</option>
+        <option value="bottom_keys">5. Bottom Keys (ZXCVBNM)</option>
+        <option value="full_alphabet">6. Full Alphabet Pangrams</option>
+        <option value="numbers">7. Numbers & Symbols</option>
+      </optgroup>
+    </select>
+
+    <select id="mode-select" onchange="resetGame()">
+      <option value="60" selected>60s Speed Test Challenge</option>
+      <option value="30">30s Speed Test Challenge</option>
+      <option value="15">15s Quick Sprint</option>
+      <option value="0">Untimed Muscle Practice</option>
+    </select>
+
+    <button class="primary" onclick="resetGame()">Restart Test ↺</button>
+  </div>
+
+  <!-- End of Speed Test Modal -->
+  <div class="modal" id="results-modal">
+    <h2>🎉 Test Completed!</h2>
+    <div class="results-grid">
+      <div class="res-box"><div class="res-val" id="res-wpm">0</div><div class="res-lbl">Net WPM</div></div>
+      <div class="res-box"><div class="res-val" id="res-acc">0%</div><div class="res-lbl">Accuracy</div></div>
+      <div class="res-box"><div class="res-val" id="res-gross">0</div><div class="res-lbl">Gross WPM</div></div>
+    </div>
+    <button class="primary" onclick="closeModal()">Try Again ↺</button>
+  </div>
+
+</div>
+
+<script>
+  // Practice & Speed Test Libraries
+  const practiceGroups = {
+    test_mixed: [
+      "The quick brown fox jumps over the lazy dog. Continuous practice is the ultimate key to mastering touch typing speed and building effortless accuracy over time.",
+      "Software engineering relies heavily on muscle memory and clear focus. Daily keyboard drills help you type complex ideas smoothly without looking down.",
+      "Artificial intelligence and computing power continue to evolve rapidly. Learning essential digital skills allows individuals to adapt to future technologies."
+    ],
+    test_hard: [
+      "Programming functions in JavaScript requiring symbols: const calc = (a, b) => { return (a * 100) / (b || 1); };",
+      "Sphinx of black quartz, judge my vow! How vexingly quick deft zebras jump across 12345 different hurdles.",
+      "System.out.println(\"Hello World!\"); Array indexes begin at 0, while loop iterations run until condition == false;"
+    ],
+    home_keys: ["ffff jjjj ffff jjjj dddd kkkk ssss llll aaaa ;;;;", "fjdksla; fjdksla; a;ldksfj a;ldksfj"],
+    home_words: ["ask dad falls glad flask a dark fall a glad lad", "add dad sad fad lad asks dads salads flaska"],
+    top_keys: ["ru ru ei ei qp qp wo wo ty ty ru ru ei ei", "qwer tyui opq w e r t y u i o p"],
+    top_words: ["the quick brown fox jumps over the lazy dog", "write read report power type quiet tree flour"],
+    bottom_keys: ["vm vm bn bn cx cx z/ z/ vm bn cx z/", "z x c v b n m z x c v b n m"],
+    full_alphabet: ["pack my box with five dozen liquor jugs", "sphinx of black quartz judge my vow"],
+    numbers: ["12345 67890 1029 3847 5612 9087", "2026 100% $50 #1 80wpm 99.9%"]
+  };
+
+  const fingerMap = {
+    '1':'Left Pinky','q':'Left Pinky','a':'Left Pinky','z':'Left Pinky',
+    '2':'Left Ring','w':'Left Ring','s':'Left Ring','x':'Left Ring',
+    '3':'Left Middle','e':'Left Middle','d':'Left Middle','c':'Left Middle',
+    '4':'Left Index','5':'Left Index','r':'Left Index','f':'Left Index','v':'Left Index','t':'Left Index','g':'Left Index','b':'Left Index',
+    '6':'Right Index','7':'Right Index','y':'Right Index','h':'Right Index','n':'Right Index','u':'Right Index','j':'Right Index','m':'Right Index',
+    '8':'Right Middle','i':'Right Middle','k':'Right Middle',',':'Right Middle',
+    '9':'Right Ring','o':'Right Ring','l':'Right Ring','.':'Right Ring',
+    '0':'Right Pinky','p':'Right Pinky',';':'Right Pinky','/':'Right Pinky','-':'Right Pinky','=':'Right Pinky',
+    ' ':'Either Thumb (Spacebar)'
+  };
+
+  const keysLayout = [
+    ["1","2","3","4","5","6","7","8","9","0"],
+    ["q","w","e","r","t","y","u","i","o","p"],
+    ["a","s","d","f","g","h","j","k","l",";"],
+    ["z","x","c","v","b","n","m",",","."],
+    [" "]
+  ];
+
+  let timer, timeRemaining, maxTime, isTyping = false, charIndex = 0, mistakes = 0;
+  let currentTextIndex = -1;
+  let elapsedSeconds = 0; // used to track elapsed time in untimed practice mode
+
+  const display = document.getElementById('quote-display');
+  const input = document.getElementById('input-field');
+  const wpmEl = document.getElementById('wpm');
+  const accEl = document.getElementById('accuracy');
+  const timeEl = document.getElementById('timer');
+  const fingerGuideEl = document.getElementById('finger-guide');
+  const modal = document.getElementById('results-modal');
+
+  function renderKeyboard() {
+    keysLayout.forEach((row, rowIndex) => {
+      const rowEl = document.getElementById(`row${rowIndex + 1}`);
+      rowEl.innerHTML = '';
+      row.forEach(key => {
+        const keyDiv = document.createElement('div');
+        keyDiv.className = `key ${key === ' ' ? 'space' : ''}`;
+        keyDiv.id = `key-${key === ' ' ? 'space' : key.toLowerCase()}`;
+        keyDiv.innerText = key === ' ' ? 'SPACE' : key.toUpperCase();
+        rowEl.appendChild(keyDiv);
+      });
+    });
+  }
+
+  function getRandomText() {
+    const selectedGroup = document.getElementById('group-select').value;
+    const pool = practiceGroups[selectedGroup] || practiceGroups.test_mixed;
+    let newIndex;
+    do {
+      newIndex = Math.floor(Math.random() * pool.length);
+    } while (newIndex === currentTextIndex && pool.length > 1);
+    currentTextIndex = newIndex;
+    return pool[currentTextIndex];
+  }
+
+  function loadParagraph() {
+    const text = getRandomText();
+    display.innerHTML = text.split('').map((char, i) =>
+      `<span class="char ${i === 0 ? 'current' : ''}">${char}</span>`
+    ).join('');
+    display.scrollTop = 0;
+    highlightNextKey();
+  }
+
+  function highlightNextKey() {
+    document.querySelectorAll('.key.active').forEach(k => k.classList.remove('active'));
+
+    const currentSpan = display.querySelectorAll('.char')[charIndex];
+    if (!currentSpan) return;
+
+    const targetChar = currentSpan.innerText.toLowerCase();
+    const keyId = targetChar === ' ' ? 'key-space' : `key-${targetChar}`;
+    const activeKeyEl = document.getElementById(keyId);
+
+    if (activeKeyEl) activeKeyEl.classList.add('active');
+
+    const finger = fingerMap[targetChar];
+    if (finger) {
+      fingerGuideEl.innerText = `👉 Next Key: "${targetChar === ' ' ? 'SPACE' : targetChar.toUpperCase()}" ➔ Finger: ${finger}`;
+    } else {
+      fingerGuideEl.innerText = `Press highlighted key`;
+    }
+  }
+
+  // FIX: resetGame() no longer calls closeModal() (which used to call resetGame()
+  // again, causing infinite recursion / stack overflow on every load, dropdown
+  // change, and "Restart Test" click). It now hides the modal directly instead.
+  function resetGame() {
+    clearInterval(timer);
+    modal.classList.remove('active');
+
+    maxTime = parseInt(document.getElementById('mode-select').value);
+
+    timeRemaining = maxTime;
+    elapsedSeconds = 0;
+    isTyping = false;
+    charIndex = 0;
+    mistakes = 0;
+    input.value = '';
+    wpmEl.innerText = '0';
+    accEl.innerText = '100%';
+    timeEl.innerText = maxTime === 0 ? '∞' : maxTime + 's';
+
+    loadParagraph();
+  }
+
+  function initTyping(e) {
+    const characters = display.querySelectorAll('.char');
+    const typedChar = input.value.slice(-1);
+
+    if (!isTyping) {
+      isTyping = true;
+      if (maxTime > 0) {
+        timer = setInterval(updateTimer, 1000);
+      } else {
+        // FIX: increment elapsedSeconds each tick so untimed-mode WPM
+        // is calculated against real elapsed time instead of being frozen.
+        timer = setInterval(() => {
+          elapsedSeconds++;
+          updateStats();
+        }, 1000);
+      }
+    }
+
+    if (e.inputType === "deleteContentBackward") {
+      if (charIndex > 0) {
+        charIndex--;
+        if (characters[charIndex].classList.contains('wrong')) mistakes--;
+        characters[charIndex].className = 'char current';
+        if (characters[charIndex + 1]) characters[charIndex + 1].className = 'char';
+      }
+    } else if (charIndex < characters.length) {
+      if (characters[charIndex].innerText === typedChar) {
+        characters[charIndex].className = 'char correct';
+      } else {
+        mistakes++;
+        characters[charIndex].className = 'char wrong';
+      }
+      charIndex++;
+      if (charIndex < characters.length) characters[charIndex].classList.add('current');
+    }
+
+    highlightNextKey();
+
+    // Finish test early if user reaches the end of paragraph before timer expires
+    if (charIndex === characters.length) {
+      if (maxTime > 0) {
+        finishSpeedTest();
+      } else {
+        setTimeout(() => {
+          resetGame();
+        }, 150);
+      }
+    }
+
+    updateStats();
+  }
+
+  function updateStats() {
+    // FIX: for untimed mode, use the real elapsedSeconds counter instead of
+    // a stale (maxTime - timeRemaining) expression that never changed.
+    let elapsed = maxTime > 0 ? (maxTime - timeRemaining) : Math.max(1, elapsedSeconds);
+    let grossWPM = Math.round((charIndex / 5) / (elapsed / 60 || 1));
+    let netWPM = Math.round((((charIndex - mistakes) / 5) / (elapsed / 60 || 1)));
+    let accuracy = charIndex > 0 ? Math.round(((charIndex - mistakes) / charIndex) * 100) : 100;
+
+    wpmEl.innerText = netWPM < 0 || !netWPM ? 0 : netWPM;
+    accEl.innerText = accuracy + '%';
+
+    return { netWPM: netWPM < 0 || !netWPM ? 0 : netWPM, grossWPM: grossWPM || 0, accuracy };
+  }
+
+  function updateTimer() {
+    if (timeRemaining > 0) {
+      timeRemaining--;
+      timeEl.innerText = timeRemaining + 's';
+      updateStats();
+    } else {
+      finishSpeedTest();
+    }
+  }
+
+  function finishSpeedTest() {
+    clearInterval(timer);
+    input.value = '';
+    const stats = updateStats();
+
+    document.getElementById('res-wpm').innerText = stats.netWPM;
+    document.getElementById('res-acc').innerText = stats.accuracy + '%';
+    document.getElementById('res-gross').innerText = stats.grossWPM;
+
+    modal.classList.add('active');
+  }
+
+  // FIX: closeModal() just hides the modal and reloads a fresh paragraph —
+  // it no longer calls resetGame(), breaking the resetGame <-> closeModal
+  // infinite recursion loop.
+  function closeModal() {
+    modal.classList.remove('active');
+    resetGameState();
+  }
+
+  // New helper: resets round state and loads a new paragraph, WITHOUT
+  // touching the modal (so it's safe to call from closeModal()).
+  function resetGameState() {
+    clearInterval(timer);
+    maxTime = parseInt(document.getElementById('mode-select').value);
+
+    timeRemaining = maxTime;
+    elapsedSeconds = 0;
+    isTyping = false;
+    charIndex = 0;
+    mistakes = 0;
+    input.value = '';
+    wpmEl.innerText = '0';
+    accEl.innerText = '100%';
+    timeEl.innerText = maxTime === 0 ? '∞' : maxTime + 's';
+
+    loadParagraph();
+  }
+
+  input.addEventListener('input', initTyping);
+  document.addEventListener('keydown', () => input.focus());
+
+  renderKeyboard();
+  resetGameState();
+</script>
+
+</body>
+</html>
